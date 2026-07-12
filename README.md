@@ -1,5 +1,7 @@
 # Oscar64 development for the Commander X16 with VS64
 
+Version Alpha 0.1: need more testing, but seems to work. 
+
 This repo is set up for C development targeting the **Commander X16**, using
 the **[Oscar64](https://github.com/drmortalwombat/oscar64) C compiler** and the
 **[VS64](https://marketplace.visualstudio.com/items?itemName=rosc.vs64) VSCode
