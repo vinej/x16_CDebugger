@@ -45,11 +45,13 @@ cannot share a window):
 | `acme/` | **The ACME project** (assembly) — x16lib's reference dialect; see [Debugging assembly programs](#debugging-assembly-programs-acme-ca65-kickassembler) |
 | `ca65/` | **The ca65 project** (native assembly, not C) — same idea, ca65 dialect of x16lib |
 | `kickass/` | **The KickAssembler project** (assembly) — same idea, KickAss dialect of x16lib; needs Java |
+| `prog8/` | **The Prog8 project** — build/run tasks + *symbolic* debugging in Box16 (no F5 source-level debugging: VS64 has no prog8/64tass toolkit); see [Prog8](#prog8-build--symbolic-debugging-only) |
 | `oscar64-sdk/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
 | `cc65-sdk/` | cc65 toolchain, repo-local copy (V2.19) — used by both the `cc65/` and `ca65/` projects |
 | `llvm-mos/` | llvm-mos SDK, repo-local full copy (`bin/mos-clang.exe`, `mos-platform/cx16/`, …) |
 | `acme-sdk/` | ACME cross-assembler, repo-local copy (`acme.exe`, `ACME_Lib/`) |
 | `kickass-sdk/` | KickAssembler, repo-local copy (`KickAss.jar` — Java must be on the PATH) |
+| `prog8-sdk/` | Prog8 compiler (`prog8c.jar`, v12.2.1 — needs **Java 11+**) plus `64tass.exe`, repo-local copy |
 | `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` — shared by both projects |
 | `box16/` | [Box16](https://github.com/indigodarkwolf/box16) (nr48.0), an alternative X16 emulator with a much richer built-in debugger |
 | `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode, for both toolchains. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
@@ -91,6 +93,7 @@ the build script all refer to them):
 | `acme/src_acme/` | *(ACME variant)* x16lib, the X16 assembly support library — reference (ACME) dialect | Copy `src_acme/` from [vinej/x16_library](https://github.com/vinej/x16_library) |
 | `ca65/src_ca65/` | *(ca65 variant)* x16lib, ca65 dialect | Copy `src_ca65/` from [vinej/x16_library](https://github.com/vinej/x16_library) — **note: this is x16_library's `src_ca65`, not x16_clib's** |
 | `kickass/src_kick/` | *(KickAssembler variant)* x16lib, KickAss dialect | Copy `src_kick/` from [vinej/x16_library](https://github.com/vinej/x16_library) |
+| `prog8-sdk/` | *(only for the Prog8 variant)* `prog8c.jar` + `64tass.exe`; prog8c needs **Java 11+** installed | [prog8 releases](https://github.com/irmen/prog8/releases) (`prog8c-<version>-all.jar`, rename to `prog8c.jar`) + a [64tass](https://sourceforge.net/projects/tass64/) Windows build |
 | `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
@@ -652,6 +655,42 @@ toolkit, so there is no VSCode-side build or debug-info support. (64tass
 programs can still be debugged symbolically inside Box16 itself via its
 `--vice-labels` output and `-sym`.)
 
+## Prog8 (build + symbolic debugging only)
+
+[Prog8](https://github.com/irmen/prog8) compiles through **64tass**, which
+VS64 does not support — so unlike the six toolchains above there is **no
+F5 source-level debugging** for Prog8 (yet: that is the goal of the
+separate [X16_Prog8Debugger](https://github.com/vinej/X16_Prog8Debugger)
+project). What the `prog8/` folder gives you today, via plain VSCode tasks
+(open `prog8\` as its own workspace root; no `project-config.json`, VS64
+is not involved):
+
+* **`build project`** (Ctrl+Shift+B) — runs
+  `prog8c -target cx16 -asmlist -out build examples/bounce.p8`.
+  prog8c needs **Java 11+**; the task calls a JDK-21 `java.exe` by
+  absolute path — edit [prog8/.vscode/tasks.json](prog8/.vscode/tasks.json)
+  if yours lives elsewhere. `64tass.exe` is found via `prog8-sdk\` which
+  the task prepends to `PATH`.
+* **`run in x16emu (standard)`** — build + run.
+* **`debug in Box16 (symbolic)`** — build, then Box16 with
+  `-sym build\bounce.vice-mon-list`: Prog8's generated label file makes
+  Box16's built-in debugger fully symbolic, and any `%breakpoint`
+  directive in the Prog8 source arms a breakpoint automatically. The
+  binary monitor is enabled too, so future tooling can attach.
+
+The example is [prog8/examples/bounce.p8](prog8/examples/bounce.p8) — a
+Prog8 port of the same bounce demo used by every other toolchain (sprite,
+VSYNC lock, fixed-point velocity, AABB collision, PSG blip; the in-box
+note uses a second PSG voice instead of the YM2151, which would need the
+KERNAL audio-bank API).
+
+Why full integration is feasible later: prog8c embeds the original source
+lines as comments in its generated assembly (default on) and `-asmlist`
+produces the 64tass listing — together they yield a `.p8`-line ↔ address
+source map; the Box16 fork already provides the runtime control. The
+missing piece is a custom VSCode debug adapter, shared with the BASIC
+debugger effort — see the X16_Prog8Debugger project charter.
+
 ## Verified
 
 * `oscar64 -tm=x16` compile of `examples/bounce.c`: OK (exit 0, 2455 bytes
@@ -687,4 +726,9 @@ programs can still be debugged symbolically inside Box16 itself via its
   KickAssembler (`-debugdump -vicesymbols`, Java 1.8) OK — PRG + `.dbg` +
   `.vs`. All three PRGs are **byte-identical** (MD5
   `7F2F685178FD49D8C4F226BF2D09D3FD`), and the Box16 fork loads the PRG
+  and opens the binary monitor.
+* Prog8 12.2.1 (`prog8c -target cx16 -asmlist`, JDK 21): `bounce.p8`
+  compiles first-try — 2208-byte PRG, generated asm carries
+  `; source: examples\bounce.p8:NN` comments, 64tass listing + 
+  `bounce.vice-mon-list` produced; Box16 fork loads the PRG with `-sym`
   and opens the binary monitor.

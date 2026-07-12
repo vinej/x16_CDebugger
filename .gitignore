@@ -17,6 +17,11 @@
 /acme-sdk
 # KickAssembler, repo-local copy (KickAss.jar; needs a system Java)
 /kickass-sdk
+# Prog8 compiler + 64tass, repo-local copy (prog8c.jar needs Java 11+)
+/prog8-sdk
+
+# prog8/ subproject: build output is untracked; tasks and example tracked
+/prog8/build/
 
 # ---------------------------------------------------------------------------
 # Assembly subprojects (acme/, ca65/, kickass/), using x16lib from
