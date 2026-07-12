@@ -1,0 +1,22 @@
+{
+    // VS64: the llvm-mos SDK, repo-local copy in the PARENT folder
+    // (x16_CDebugger\llvm-mos). It must be a FULL SDK: bin\mos-clang.exe,
+    // bin\mos-clang++.exe, bin\mos-cx16.cfg and mos-platform\cx16\include
+    // all have to exist -- a bare LLVM build (bin/lib/share only) is not
+    // enough. Absolute path required: VS64 resolves relative paths against
+    // an unpredictable cwd.
+    "vs64.llvmInstallDir": "c:\\quartus\\projects\\x16_CDebugger\\llvm-mos",
+
+    // VS64: the Commander X16 emulator used by the "x16" launch type,
+    // shared with the Oscar64 setup in the parent folder.
+    // VS64 adds "-prg <built .prg> -run" by itself; x16Args are appended.
+    "vs64.x16Executable": "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
+    "vs64.x16Args": "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2",
+
+    // vs64.ninjaExecutable is deliberately unset: VS64 falls back to the
+    // ninja.exe bundled with the extension.
+
+    // Rebuild automatically whenever a source file is saved.
+    "vs64.autoBuild": true,
+    "C_Cpp.codeAnalysis.clangTidy.path": "c:\\quartus\\projects\\x16_CDebugger\\llvm-mos\\bin\\clang-tidy.exe"
+}

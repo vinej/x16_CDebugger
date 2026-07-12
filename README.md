@@ -1,86 +1,131 @@
-# Oscar64 development for the Commander X16 with VS64
+# C debugging for the Commander X16 with VS64 (Oscar64 & llvm-mos)
 
 Version Alpha 0.1: need more testing, but seems to work. 
 
+******************************
+--> This repo is about a feature for debugging Oscar64 or llvm-mos C code directly into VSCode step by step with F10, F11, Shift F11 and F5
+******************************
+
 This repo is set up for C development targeting the **Commander X16**, using
-the **[Oscar64](https://github.com/drmortalwombat/oscar64) C compiler** and the
+either the **[Oscar64](https://github.com/drmortalwombat/oscar64)** or the
+**[llvm-mos](https://github.com/llvm-mos/llvm-mos-sdk)** C compiler, with the
 **[VS64](https://marketplace.visualstudio.com/items?itemName=rosc.vs64) VSCode
-extension** for build/run integration. The walkthrough below uses
-[examples/bounce.c](examples/bounce.c) — a sprite bouncing around the screen
-with PSG and YM2151 sound — as the working example.
+extension** for build/run/debug integration. The walkthrough below uses
+[examples/bounce.c](oscar64/examples/bounce.c) — a sprite bouncing around the screen
+with PSG and YM2151 sound — as the working example; both toolchains build the
+same source against the [x16clib](https://github.com/vinej/x16_clib) library.
 
 Nothing has to be installed system-wide except the VS64 extension itself —
-but the third-party pieces (compiler, emulators, support library, docs) are
+but the third-party pieces (compilers, emulators, support library, docs) are
 **not tracked in this repo**: after cloning, set them up once as described in
-[Installing the untracked pieces](#installing-the-untracked-pieces).
+[Setup](#setup).
 
 ## What's where
 
+The repo hosts **one VS64 project per toolchain**, each in its own subfolder
+that you open as its **own VSCode workspace root** (VS64 reads
+`project-config.json` only from the workspace root, so the two projects
+cannot share a window):
+
 | Path | What it is |
 |---|---|
-| `oscar64/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
-| `src_oscar64/x16/` | x16clib, the X16 support library (Oscar64 port). Header-driven: each header ends in `#pragma compile(...)`, so including it pulls the implementation in — there is no library archive to build |
-| `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` |
+| `oscar64/` | **The Oscar64 project** — open this folder in VSCode. Contains `project-config.json`, `.vscode/` (VS64 settings, tasks, launch configs), `examples/` (`hello.c`, `numbers.c`, `bounce.c`), `src_oscar64/x16/` (x16clib, Oscar64 port — header-driven: each header ends in `#pragma compile(...)`, so including it pulls the implementation in), `build/` (output: `bounce.prg` + Oscar64 listing/debug files) and `build_oscar64.ps1` (stand-alone CLI build/run/test script, no VSCode needed) |
+| `llvm/` | **The llvm-mos project** — same idea for llvm-mos; see [Debugging with the llvm-mos toolchain](#debugging-with-the-llvm-mos-toolchain) |
+| `oscar64-sdk/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
+| `llvm-mos/` | llvm-mos SDK, repo-local full copy (`bin/mos-clang.exe`, `mos-platform/cx16/`, …) |
+| `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` — shared by both projects |
 | `box16/` | [Box16](https://github.com/indigodarkwolf/box16) (nr48.0), an alternative X16 emulator with a much richer built-in debugger |
-| `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
-| `examples/` | Example programs: `hello.c`, `numbers.c`, `bounce.c` |
-| `project-config.json` | VS64 project file — says what to build and how |
-| `.vscode/` | VS64 settings (tool paths), build task, X16 launch config |
-| `build/` | Build output (`bounce.prg` and Oscar64 listing/debug files) |
-| `build_oscar64.ps1` | Stand-alone CLI build/run/test script (no VSCode needed) |
-| `tutorial/` | `oscar64_guide.md` and `userguide.md` for the library itself |
+| `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode, for both toolchains. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
+| `tutorial/` | `oscar64_guide.md` and `userguide.md` for the x16clib library |
 
-## Installing the untracked pieces
+## Setup
+
+Setup is the same four steps for both toolchains — only step 3 differs
+between Oscar64 and llvm-mos. If you only care about one toolchain, skip the
+other's rows in the table and its half of step 3.
+
+### 1. Install the VS64 extension
+
+Install **`rosc.vs64`** from the VSCode marketplace (tested with 2.6.2).
+Nothing else is needed system-wide.
+
+### 2. Installing the untracked pieces
 
 The [.gitignore](.gitignore) deliberately keeps every third-party binary and
-source tree out of this repo. After cloning, recreate these folders **in the
-repo root** (folder names must match exactly — the VS64 config, the tasks and
+source tree out of this repo. After cloning, recreate these folders (folder
+names and locations must match exactly — the VS64 config, the tasks and
 the build script all refer to them):
 
 | Folder | What goes there | Where to get it |
 |---|---|---|
-| `oscar64/` | Oscar64 compiler v1.32.272 — install/unpack it so that `oscar64\bin\oscar64.exe` and `oscar64\include\` exist | Windows release from [drmortalwombat/oscar64](https://github.com/drmortalwombat/oscar64/releases) |
+| `oscar64-sdk/` | Oscar64 compiler v1.32.272 — install/unpack it so that `oscar64-sdk\bin\oscar64.exe` and `oscar64-sdk\include\` exist | Windows release from [drmortalwombat/oscar64](https://github.com/drmortalwombat/oscar64/releases) |
 | `emulator/` | Official X16 emulator: `x16emu.exe` plus `rom.bin` (R49) | Windows zip from [X16Community/x16-emulator releases](https://github.com/X16Community/x16-emulator/releases) — it contains both the emulator and the ROM |
-| `src_oscar64/` | x16clib, the X16 support library (Oscar64 port); must end up as `src_oscar64\x16\*.c/h` | Copy the `src_oscar64/` folder from [vinej/x16_clib](https://github.com/vinej/x16_clib) (the `tutorial/` guides tracked here come from the same repo) |
+| `oscar64/src_oscar64/` | x16clib, the X16 support library (Oscar64 port); must end up as `oscar64\src_oscar64\x16\*.c/h` | Copy the `src_oscar64/` folder from [vinej/x16_clib](https://github.com/vinej/x16_clib) (the `tutorial/` guides tracked here come from the same repo) |
 | `box16-src/` | The Box16 fork with the VICE binary monitor — **required for C source-level debugging** | `git clone -b binary-monitor https://github.com/vinej/box16.git box16-src`, then build it — see [Rebuilding the Box16 fork](#rebuilding-the-box16-fork) |
 | `box16/` | *(optional)* Stock Box16 nr48.0 (`Box16.exe`, `SDL2.dll`, `zlibwapi.dll`) for the `run in Box16 (debugger)` task | [indigodarkwolf/box16 releases](https://github.com/indigodarkwolf/box16/releases) |
 | `doc/` | *(optional)* X16 reference docs (Programmer's Reference Guide, VERA references) | [X16Community/x16-docs](https://github.com/X16Community/x16-docs) |
+| `llvm-mos/` | *(only for the llvm variant)* The **full** llvm-mos SDK — `bin\mos-clang.exe`, `bin\mos-clang++.exe`, `bin\mos-cx16.cfg` and `mos-platform\cx16\include` must all exist; a bare LLVM build (bin/lib/share only) is **not** enough | SDK release from [llvm-mos/llvm-mos-sdk](https://github.com/llvm-mos/llvm-mos-sdk/releases), unpacked so `llvm-mos\bin\mos-clang.exe` exists |
+| `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
+| `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
-The remaining ignored paths need nothing from you: `build/` and
-`build_oscar64/` are recreated by the first build, and
-`.vscode/c_cpp_properties.json` is regenerated by VS64 (the hand-authored
-`settings.json`, `tasks.json` and `launch.json` *are* tracked, so the tasks
-and launch configurations work out of the box).
+The remaining ignored paths need nothing from you: `oscar64/build/`,
+`oscar64/build_oscar64/` and `llvm/build/` are recreated by the first build,
+and each project's `.vscode/c_cpp_properties.json` is regenerated by VS64
+(the hand-authored `settings.json`, `tasks.json` and `launch.json` *are*
+tracked, so the tasks and launch configurations work out of the box).
 
-Finally, edit the three `vs64.*` absolute paths in
-[.vscode/settings.json](.vscode/settings.json) to point at your clone
-location — see the next section.
+### 3. Open the project folder and fix its settings paths
 
-## One-time setup
+Each toolchain is its own VS64 project, opened as its **own workspace
+root** — VS64 only reads `project-config.json` from the workspace root, and
+the repo root deliberately has none. Do **not** open the repo root to work;
+open the project subfolder (each toolchain gets its own VSCode window).
 
-1. Install the **VS64** extension in VSCode (`rosc.vs64`, tested with 2.6.2).
-2. Open this folder (e.g. `c:\quartus\projects\x16_CDebugger`) as the
-   workspace root — VS64 looks for `project-config.json` there.
-3. Point [.vscode/settings.json](.vscode/settings.json) at the repo-local
-   compiler and emulator:
+The only per-machine edit is the `vs64.*` absolute paths in each project's
+`settings.json`: VS64 does not expand `${workspaceFolder}` in settings, so
+they cannot be made portable — replace `c:\quartus\projects\x16_CDebugger`
+with your clone location.
 
-   ```jsonc
-   "vs64.oscar64InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\oscar64",
-   "vs64.x16Executable":     "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
-   "vs64.x16Args":           "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
-   ```
+**Oscar64** — open `<clone>\oscar64` (File → Open Folder…) and check
+[oscar64/.vscode/settings.json](oscar64/.vscode/settings.json):
 
-   If your clone lives anywhere else, update these three absolute paths —
-   VS64 does not expand `${workspaceFolder}` in settings, so they cannot be
-   made portable.
+```jsonc
+"vs64.oscar64InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\oscar64-sdk",
+"vs64.x16Executable":     "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
+"vs64.x16Args":           "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
+```
+
+**llvm-mos** — open `<clone>\llvm` (a separate window) and check
+[llvm/.vscode/settings.json](llvm/.vscode/settings.json):
+
+```jsonc
+"vs64.llvmInstallDir": "c:\\quartus\\projects\\x16_CDebugger\\llvm-mos",
+"vs64.x16Executable":  "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
+"vs64.x16Args":        "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
+```
+
+### 4. First debug (same in both projects)
+
+1. Open `examples\bounce.c` in the project window and set a breakpoint on a
+   C line (e.g. the first statement of `main()`).
+2. Press **F5**. The first launch configuration is
+   **`Attach to Box16 (binary monitor)`**, which does everything: builds the
+   PRG, kills any stale emulator, starts the Box16 fork with the binary
+   monitor, waits for it to listen, attaches, restarts the program — and
+   stops at your breakpoint. Step with F10/F11/Shift+F11, watch
+   globals/statics (e.g. `pos_x`), continue with F5.
+
+If an *x16emu* window appears instead of Box16, the Run and Debug dropdown
+(Ctrl+Shift+D) has the wrong configuration selected — pick
+**`Attach to Box16 (binary monitor)`** once; VSCode remembers it afterwards.
 
 ## The development flow
 
 ```
-edit .c file  ──►  Ctrl+Shift+B (build)  ──►  F5 (run in X16 emulator)
+edit .c file  ──►  Ctrl+Shift+B (build)  ──►  F5 (debug in Box16, or run in x16emu)
 ```
 
-1. **Edit** — open [examples/bounce.c](examples/bounce.c). IntelliSense works
+1. **Edit** — open [examples/bounce.c](oscar64/examples/bounce.c). IntelliSense works
    because VS64 generates `.vscode/c_cpp_properties.json` and
    `build/compile_commands.json` from the project file.
 2. **Build** — `Ctrl+Shift+B` runs the default VS64 build task. VS64 generates
@@ -93,15 +138,21 @@ edit .c file  ──►  Ctrl+Shift+B (build)  ──►  F5 (run in X16 emulato
    (`-n` native 6502 code instead of interpreted bytecode, `-g` debug symbols,
    `-tm=x16` the Commander X16 target.) With `vs64.autoBuild` enabled — as it
    is here — saving a file rebuilds automatically.
-3. **Run** — `F5` uses the `"type": "x16"` launch configuration in
-   [.vscode/launch.json](.vscode/launch.json): it builds if needed, then starts
-   `x16emu -prg build/bounce.prg -run` plus the `vs64.x16Args`. The bounce
-   demo runs frame-locked at 60 Hz; press any key inside the emulator to quit.
+3. **Run/Debug** — `F5` runs whichever configuration is selected in
+   [.vscode/launch.json](oscar64/.vscode/launch.json):
+   * **`Attach to Box16 (binary monitor)`** (the default, first in the
+     list) — the full source-level debug flow described in
+     [Debugging](#debugging).
+   * **`Launch X16 emulator`** (the `"type": "x16"` configuration) — plain
+     run, no debugger: builds if needed, then starts
+     `x16emu -prg build/bounce.prg -run` plus the `vs64.x16Args`. The bounce
+     demo runs frame-locked at 60 Hz; press any key inside the emulator to
+     quit.
 
 ### Choosing the emulator: standard x16emu or Box16
 
 Both emulators live in the repo and there is a build-and-run task for each
-(**Terminal → Run Task…**, defined in [.vscode/tasks.json](.vscode/tasks.json)):
+(**Terminal → Run Task…**, defined in [.vscode/tasks.json](oscar64/.vscode/tasks.json)):
 
 | Task | Emulator | Use when |
 |---|---|---|
@@ -115,18 +166,18 @@ paths in the tasks too).
 The `F5` launch flow always uses the single `vs64.x16Executable` setting —
 VS64 cannot select an emulator per launch configuration. It points at the
 standard x16emu; to make `F5` start Box16 instead, change
-[.vscode/settings.json](.vscode/settings.json) to:
+[.vscode/settings.json](oscar64/.vscode/settings.json) to:
 
 ```jsonc
 "vs64.x16Executable": "c:\\quartus\\projects\\x16_CDebugger\\box16\\Box16.exe",
-"vs64.x16Args": "-ignore_ini -rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -sym c:\\quartus\\projects\\x16_CDebugger\\build\\bounce.lbl -scale 2"
+"vs64.x16Args": "-ignore_ini -rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -sym c:\\quartus\\projects\\x16_CDebugger\\oscar64\\build\\bounce.lbl -scale 2"
 ```
 
 (Box16 accepts the `-prg <file> -run` arguments VS64 adds automatically, so
 everything else keeps working.)
 
 To build a **different example**, change `sources` (and, if you like, `name`)
-in [project-config.json](project-config.json):
+in [project-config.json](oscar64/project-config.json):
 
 ```json
 "sources": [ "examples/hello.c" ]
@@ -134,7 +185,7 @@ in [project-config.json](project-config.json):
 
 ### Command line alternative (no VSCode)
 
-The same compile/run is scripted in [build_oscar64.ps1](build_oscar64.ps1):
+The same compile/run is scripted in [build_oscar64.ps1](oscar64/build_oscar64.ps1):
 
 ```powershell
 .\build_oscar64.ps1 -Source examples\bounce.c -Run   # compile + run windowed
@@ -143,7 +194,7 @@ The same compile/run is scripted in [build_oscar64.ps1](build_oscar64.ps1):
 
 ## How the project file is wired (and why)
 
-[project-config.json](project-config.json):
+[project-config.json](oscar64/project-config.json):
 
 ```json
 {
@@ -200,7 +251,7 @@ C-line breakpoint mapping are all emulator-agnostic.
 
 One step:
 
-1. Set breakpoints on C lines in [examples/bounce.c](examples/bounce.c).
+1. Set breakpoints on C lines in [examples/bounce.c](oscar64/examples/bounce.c).
 2. **F5** with **`Attach to Box16 (binary monitor)`** selected in the Run
    and Debug dropdown (Ctrl+Shift+D).
 
@@ -344,6 +395,73 @@ start the emulator with `-binarymonitor` first, then
 * `bounce.c` needs real video (VSYNC): run it windowed, never under the
   emulator's headless `-testbench` mode, or `x16_vsync_wait()` never returns.
 
+## Debugging with the llvm-mos toolchain
+
+The same F5 debugging flow also works with the
+**[llvm-mos](https://github.com/llvm-mos/llvm-mos-sdk)** C compiler — VS64's
+`vice` debug type is toolkit-agnostic and the Box16 fork's binary monitor is
+protocol-level, so only the build side changes. The `llvm/` subfolder is a
+complete, separate VS64 project for it.
+
+### Setup
+
+Covered by the common [Setup](#setup) section: install the llvm rows of the
+untracked-pieces table (the full llvm-mos SDK into `llvm-mos\` at the repo
+root, x16clib's `include_llvm\` + `dist_llvm\libx16c.a` into `llvm\`), open
+**`llvm\` as its own workspace root**, and fix the absolute paths in
+[llvm/.vscode/settings.json](llvm/.vscode/settings.json).
+
+Then everything works as in the Oscar64 project: `Ctrl+Shift+B` builds,
+`F5` on **`Attach to Box16 (binary monitor)`** gives one-step C source-level
+debugging with breakpoints, stepping and watches on globals.
+
+### How the llvm project is wired
+
+[llvm/project-config.json](llvm/project-config.json):
+
+```json
+{
+    "toolkit": "llvm",
+    "machine": "cx16",
+    "sources": [ "examples/bounce.c" ],
+    "build": "debug",
+    "includes": [ "include_llvm" ],
+    "linkerFlags": [ "-mreserve-zp=16", "dist_llvm/libx16c.a" ]
+}
+```
+
+* **`"machine": "cx16"`** makes VS64 pass `--config mos-cx16.cfg` to every
+  compile/assemble/link step — the same mechanism as the SDK's
+  `mos-cx16-clang` wrapper. It must be `cx16` (not `x16`): the config file
+  name is built literally and only `mos-cx16.cfg` exists.
+* **`"linkerFlags"`** carries both the library and `-mreserve-zp=16`.
+  The x16clib archive *must* be linked with `-mreserve-zp=16`, otherwise
+  `ld.lld` fails with `section '.zp.bss' will not fit in region 'zp'`.
+  It sits in `linkerFlags` (not a `libraries` attribute) because VS64 2.6.2
+  only honors `libraries` for the cc65/oscar64 toolkits; relative paths
+  resolve correctly because VS64 runs ninja with the project folder as cwd.
+* A debug build compiles with `-g -O0` plus DWARF-quality flags
+  (`-fstandalone-debug`, …) automatically — no `compilerFlags` needed.
+* The build produces `build\bounce.prg` **and** `build\bounce.prg.elf`;
+  the `.elf` carries the DWARF debug info VS64 loads for the attach.
+
+### llvm-specific limitations
+
+* **Watches/variables: globals and statics only.** VS64 reads the DWARF
+  line table (C-line breakpoints and stepping work fully) and the ELF
+  symbol table, but does not extract DWARF local-variable info — so locals
+  and parameters don't show; inspect them via globals or the memory view.
+  (Same practical limitation as Oscar64, whose `.dbj` carries no locals
+  either.)
+* **Stepping is per-instruction inside the emulator.** The Box16 fork's
+  line-granular stepping optimization reads Oscar64's `.dbj`, which llvm
+  builds don't produce; VS64 still steps by C line client-side, it just
+  issues more monitor round-trips, so stepping over long lines is a bit
+  slower.
+* No VICE label file is produced, so the Box16 ImGui debugger shows plain
+  addresses (VSCode-side symbols are unaffected). The tasks therefore pass
+  no `-sym`.
+
 ## Verified
 
 * `oscar64 -tm=x16` compile of `examples/bounce.c`: OK (exit 0, 2455 bytes
@@ -356,3 +474,11 @@ start the emulator with `-binarymonitor` first, then
   the exact address, step into/over/out, resume-and-rehit, delete); without
   `-binarymonitor` the fork behaves like stock and opens no port.
 * Oscar64 `-O3` on `bounce.c`: compiler crash (documented above).
+* llvm-mos build of `llvm\examples\bounce.c` with VS64's exact debug flags
+  (`-g -O0 -fstandalone-debug …`, link with `-mreserve-zp=16` +
+  `dist_llvm/libx16c.a`): OK — produces `bounce.prg` (5509 bytes) and
+  `bounce.prg.elf` whose DWARF line table has 121 rows for `bounce.c` and
+  whose symtab contains `main`, `move_sprite`, `pos_x`, `pos_y`,
+  `blip_timer`.
+* Box16 fork with the llvm-built PRG: OK — loads it, runs, and prints
+  `binary monitor: listening on 127.0.0.1:6502`.

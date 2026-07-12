@@ -1,4 +1,4 @@
-{
+﻿{
     "version": "2.0.0",
     "tasks": [
         {
@@ -19,9 +19,9 @@
             // Build, then run in the standard/official X16 emulator.
             "label": "run in x16emu (standard)",
             "type": "shell",
-            "command": "${workspaceFolder}\\emulator\\x16emu.exe",
+            "command": "${workspaceFolder}\\..\\emulator\\x16emu.exe",
             "args": [
-                "-rom", "${workspaceFolder}\\emulator\\rom.bin",
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
                 "-prg", "${workspaceFolder}\\build\\bounce.prg",
                 "-run",
                 "-scale", "2"
@@ -52,11 +52,11 @@
             // stopping at the first breakpoint.
             "label": "debug in Box16 (binary monitor)",
             "type": "shell",
-            "command": "${workspaceFolder}\\box16-src\\build\\vs2022\\out\\x64\\Release\\box16.exe",
+            "command": "${workspaceFolder}\\..\\box16-src\\build\\vs2022\\out\\x64\\Release\\box16.exe",
             "args": [
                 "-ignore_ini",
                 "-binarymonitor",
-                "-rom", "${workspaceFolder}\\emulator\\rom.bin",
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
                 "-prg", "${workspaceFolder}\\build\\bounce.prg",
                 "-run",
                 "-sym", "${workspaceFolder}\\build\\bounce.lbl",
@@ -86,10 +86,10 @@
             // the launch (a bad option there makes Box16 exit immediately).
             "label": "run in Box16 (debugger)",
             "type": "shell",
-            "command": "${workspaceFolder}\\box16\\Box16.exe",
+            "command": "${workspaceFolder}\\..\\box16\\Box16.exe",
             "args": [
                 "-ignore_ini",
-                "-rom", "${workspaceFolder}\\emulator\\rom.bin",
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
                 "-prg", "${workspaceFolder}\\build\\bounce.prg",
                 "-run",
                 "-sym", "${workspaceFolder}\\build\\bounce.lbl",

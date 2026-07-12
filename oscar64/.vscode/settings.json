@@ -1,7 +1,8 @@
 ﻿{
-    // VS64: use the repo-local Oscar64 compiler. VS64 resolves relative
-    // paths against an unpredictable cwd, so the path must be absolute.
-    "vs64.oscar64InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\oscar64",
+    // VS64: use the repo-local Oscar64 compiler (oscar64-sdk\ in the
+    // PARENT folder). VS64 resolves relative paths against an
+    // unpredictable cwd, so the path must be absolute.
+    "vs64.oscar64InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\oscar64-sdk",
 
     // VS64: the Commander X16 emulator used by the "x16" launch type.
     // VS64 adds "-prg <built .prg> -run" by itself; x16Args are appended.

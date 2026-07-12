@@ -35,16 +35,16 @@ function Fail([string]$message) {
 }
 
 $root   = $PSScriptRoot
-$emu    = Join-Path $root "emulator\x16emu.exe"
-$rom    = Join-Path $root "emulator\rom.bin"
+$emu    = Join-Path $root "..\emulator\x16emu.exe"
+$rom    = Join-Path $root "..\emulator\rom.bin"
 $libsrc = Join-Path $root "src_oscar64"
 $build  = Join-Path $root "build_oscar64"
 
 # --- locate Oscar64 -----------------------------------------------------
-# The repo-local .\oscar64 copy wins, then OSCAR64_HOME, then C:\oscar64.
-# oscar64.exe finds its own include/ tree relative to the exe.
+# The repo-local ..\oscar64-sdk copy wins, then OSCAR64_HOME, then
+# C:\oscar64. oscar64.exe finds its own include/ tree relative to the exe.
 $o64 = $null
-$candidates = @((Join-Path $root "oscar64"))
+$candidates = @((Join-Path $root "..\oscar64-sdk"))
 if ($env:OSCAR64_HOME) { $candidates += $env:OSCAR64_HOME }
 $candidates += "C:\oscar64"
 foreach ($c in $candidates) {
@@ -53,7 +53,7 @@ foreach ($c in $candidates) {
     }
 }
 if (-not $o64) {
-    Fail "Oscar64 not found. Unzip a release to .\oscar64, or set OSCAR64_HOME."
+    Fail "Oscar64 not found. Unzip a release to ..\oscar64-sdk, or set OSCAR64_HOME."
 }
 
 if (-not (Test-Path $build)) { New-Item -ItemType Directory -Path $build | Out-Null }

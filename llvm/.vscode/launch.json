@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // FIRST in the list so a plain F5 defaults to real debugging.
+            // One-step C source-level debugging: F5 builds, starts the
+            // Box16 fork with the binary monitor (via preLaunchTask),
+            // attaches, restarts the program, and stops at the first
+            // breakpoint. VS64 locates the DWARF debug info
+            // (build\bounce.prg.elf) automatically from project-config.json.
+            "type": "vice",
+            "request": "attach",
+            "name": "Attach to Box16 (binary monitor)",
+            "program": "${workspaceFolder}\\build\\bounce.prg",
+            "hostname": "localhost",
+            "port": 6502,
+            "preLaunchTask": "debug in Box16 (binary monitor)"
+        },
+        {
+            // Plain run (no debugger) in the official x16emu.
+            "type": "x16",
+            "request": "launch",
+            "name": "Launch X16 emulator",
+            "preLaunchTask": "${defaultBuildTask}"
+        }
+    ]
+}

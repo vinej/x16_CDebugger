@@ -1,0 +1,11 @@
+{
+    "name": "bounce",
+    "description": "x16clib bounce example, llvm-mos toolkit, C source-level debugging",
+    "toolkit": "llvm",
+    "machine": "cx16",
+    "format": "prg",
+    "sources": [ "examples/bounce.c" ],
+    "build": "debug",
+    "includes": [ "include_llvm" ],
+    "linkerFlags": [ "-mreserve-zp=16", "dist_llvm/libx16c.a" ]
+}
