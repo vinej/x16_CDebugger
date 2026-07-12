@@ -71,6 +71,7 @@ the build script all refer to them):
 | `cc65-sdk/` | *(only for the cc65 variant)* The cc65 toolchain (V2.19): `bin\`, `include\`, `lib\`, `cfg\`, `asminc\` — the standard install layout | Windows snapshot from [cc65.github.io](https://cc65.github.io/getting-started.html) ([sourceforge builds](https://sourceforge.net/projects/cc65/files/)), unpacked so `cc65-sdk\bin\cc65.exe` exists |
 | `cc65/include_ca65/` | *(only for the cc65 variant)* x16clib headers, cc65 port | Copy `include_ca65/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `cc65/dist_ca65/` | *(only for the cc65 variant)* `x16c.lib`, the prebuilt x16clib archive | Copy `dist_ca65/x16c.lib` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_ca65.ps1`) |
+| `cc65/src_ca65/` | *(optional, cc65 variant)* x16clib assembly sources — only needed for the [step-into-the-library recipe](#stepping-into-x16clib-under-cc65) | Copy `src_ca65/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
@@ -463,12 +464,9 @@ root, x16clib's `include_ca65\` + `dist_ca65\x16c.lib` into `cc65\`), open
   ImGui debugger shows your symbol names too.
 * A debug build compiles with `-g` and no optimizer flags (best for
   debugging); VS64 always links with `--dbgfile build/bounce.dbg`, which is
-  the debug info VS64 loads for the attach.
-* **Stepping into x16clib works** and shows the library's `.s` assembly
-  source: the archive is assembled with `ca65 -g` (x16_clib commit), and
-  ld65's `--dbgfile` carries the line info through. Harmless link-time
-  note: the runtime's `sp-compat.s` prints a deprecation warning about the
-  `sp` symbol — ignore it.
+  the debug info VS64 loads for the attach. Harmless link-time note: the
+  runtime's `sp-compat.s` prints a deprecation warning about the `sp`
+  symbol — ignore it.
 
 ### cc65-specific notes
 
@@ -479,6 +477,45 @@ root, x16clib's `include_ca65\` + `dist_ca65\x16c.lib` into `cc65\`), open
 * Stepping is per-instruction inside the emulator (the Box16 fork's
   line-granular fast path only reads Oscar64 `.dbj`), so stepping over
   long C lines makes more monitor round-trips — same as the llvm project.
+
+### Stepping into x16clib under cc65
+
+By default, **F11 on a library call steps over it** (execution runs to the
+next line of your own code). This is a VS64 2.6.2 limitation, not missing
+debug info: `bounce.dbg` does carry line records for the library's `.s`
+sources (the archive is assembled with `ca65 -g`), but VS64's cc65
+debug-info resolver discards line records for every file that is not
+listed in `project-config.json`'s `sources`. Two ways to look inside a
+library call anyway:
+
+**Option 1 — Box16's own debugger (recommended, zero setup).** While
+VSCode is stopped on the call line, switch to the Box16 window: its CPU
+panel shows the live disassembly *with your symbol names* (the task loads
+ld65's `-Ln` label file via `-sym`), and you can step instruction by
+instruction there. VSCode and Box16 stay in sync — continue from either
+side.
+
+**Option 2 — the `sources` recipe (real F11 into a chosen module).**
+Because the filter is literally "is the file in `sources`?", any library
+module you add there becomes debuggable: VS64 assembles it into the
+program directly (its object then shadows the archive member — no
+duplicate-symbol clash, verified) and its lines pass the filter. The
+project is pre-wired for this (`src_ca65/core` is already on the include
+path, `--cpu 65C02` already in `assemblerFlags`); you only need
+`cc65\src_ca65\` installed (see the untracked-pieces table). Then, to step
+into e.g. the sprite module, change one line in
+[cc65/project-config.json](cc65/project-config.json):
+
+```json
+"sources": [ "examples/bounce.c", "src_ca65/sprite/sprite.s" ]
+```
+
+Rebuild (Ctrl+Shift+B) and F11 now walks into `sprite.s` at the
+assembly-source level. **To deactivate, remove the module from `sources`
+again** — the build falls back to the archive and F11 steps over the
+library as before. Add only the module(s) you are actually debugging:
+directly-linked modules are always included in the PRG, so listing all of
+them costs program size for no benefit.
 
 ## Debugging with the llvm-mos toolchain
 

@@ -6,7 +6,8 @@
     "format": "prg",
     "sources": [ "examples/bounce.c" ],
     "build": "debug",
-    "includes": [ "include_ca65" ],
+    "includes": [ "include_ca65", "src_ca65/core" ],
+    "assemblerFlags": [ "--cpu", "65C02" ],
     "linker": ".\\ld65-cx16.cmd",
     "linkerFlags": [ "-Ln", "build/bounce.lbl" ]
 }

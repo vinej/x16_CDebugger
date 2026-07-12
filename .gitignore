@@ -21,6 +21,7 @@
 /cc65/build/
 /cc65/include_ca65/
 /cc65/dist_ca65/
+/cc65/src_ca65/
 
 # ---------------------------------------------------------------------------
 # oscar64/ subproject (Oscar64 toolkit): generated output and third-party
