@@ -344,6 +344,14 @@ interpreter's statement loop) filter at full emulation speed instead of
 per-hit client round-trips. Standard 9-byte VS64 requests take the
 unchanged code path — verified by the 36-assertion regression above.
 
+The fork's monitor also gained two latency fixes that **do** benefit all
+VS64 debugging here: while paused it now services commands at sub-ms
+cadence (the display is refreshed at ~60 Hz instead of once per request),
+and the client socket runs with `TCP_NODELAY` (no Nagle/delayed-ACK
+stalls on the request/response ping-pong). Stepping — especially the
+per-instruction fallback in the cc65/llvm/assembly projects, which issues
+many round-trips per F10/F11 — is noticeably snappier as a result.
+
 ### The stock emulators (assembly-level only)
 
 Everything below applies to the unmodified emulators — useful when the
