@@ -1,0 +1,12 @@
+{
+    "name": "bounce",
+    "description": "x16lib bounce example, ca65 (native assembly), assembly source-level debugging",
+    "toolkit": "cc65",
+    "machine": "none",
+    "format": "prg",
+    "sources": [ "examples/bounce.asm" ],
+    "build": "debug",
+    "includes": [ "src_ca65" ],
+    "assemblerFlags": [ "--cpu", "65C02" ],
+    "linkerFlags": [ "-C", "bounce.cfg", "-Ln", "build/bounce.lbl" ]
+}

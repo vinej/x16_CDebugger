@@ -1,0 +1,82 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "vs64",
+            "action": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "build project"
+        },
+        {
+            "type": "vs64",
+            "action": "clean",
+            "label": "clean project"
+        },
+        {
+            // Build, then run in the standard/official X16 emulator
+            // (shared with the other toolchain projects, one level up).
+            "label": "run in x16emu (standard)",
+            "type": "shell",
+            "command": "${workspaceFolder}\\..\\emulator\\x16emu.exe",
+            "args": [
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
+                "-prg", "${workspaceFolder}\\build\\bounce.prg",
+                "-run",
+                "-scale", "2"
+            ],
+            "dependsOn": "build project",
+            "problemMatcher": []
+        },
+        {
+            // Kill any leftover emulator so the debug flow always talks to
+            // a freshly started instance of the current build.
+            "label": "kill stale box16",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile", "-Command",
+                "Stop-Process -Name box16 -Force -ErrorAction SilentlyContinue; exit 0"
+            ],
+            "presentation": { "reveal": "silent" },
+            "problemMatcher": []
+        },
+        {
+            // The one-step debug entry point: F5 on "Attach to Box16
+            // (binary monitor)" runs this automatically (preLaunchTask).
+            // -sym loads the VICE label file the assembler writes (see
+            // project-config.json), so Box16's own ImGui debugger shows
+            // symbol names too.
+            "label": "debug in Box16 (binary monitor)",
+            "type": "shell",
+            "command": "${workspaceFolder}\\..\\box16-src\\build\\vs2022\\out\\x64\\Release\\box16.exe",
+            "args": [
+                "-ignore_ini",
+                "-binarymonitor",
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
+                "-prg", "${workspaceFolder}\\build\\bounce.prg",
+                "-run",
+                "-sym", "${workspaceFolder}\\build\\bounce.lbl",
+                "-scale", "2"
+            ],
+            "dependsOn": ["build project", "kill stale box16"],
+            "dependsOrder": "sequence",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "box16-binary-monitor",
+                "pattern": {
+                    "regexp": "^__never_matches__$",
+                    "file": 1,
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "binary monitor: listening"
+                }
+            }
+        }
+    ]
+}

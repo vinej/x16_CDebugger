@@ -11,7 +11,28 @@
 # llvm-mos SDK, repo-local full copy (bin, lib, mos-platform, ...)
 /llvm-mos
 # cc65 toolchain, repo-local copy (bin, include, lib, cfg, asminc, target)
+# (used by both the cc65/ C project and the ca65/ assembly project)
 /cc65-sdk
+# ACME cross-assembler, repo-local copy (acme.exe, ACME_Lib, docs)
+/acme-sdk
+# KickAssembler, repo-local copy (KickAss.jar; needs a system Java)
+/kickass-sdk
+
+# ---------------------------------------------------------------------------
+# Assembly subprojects (acme/, ca65/, kickass/), using x16lib from
+# vinej/x16_library: generated output and library source copies are
+# untracked; the hand-authored project-config.json, examples/, bounce.cfg
+# and .vscode configs ARE tracked.
+# ---------------------------------------------------------------------------
+/acme/build/
+/acme/src_acme/
+/ca65/build/
+/ca65/src_ca65/
+/kickass/build/
+/kickass/src_kick/
+# KickAss resolves relative output dirs against the source file; stray
+# .sym/.info output can land here when built outside VS64.
+/kickass/examples/build/
 
 # ---------------------------------------------------------------------------
 # cc65/ subproject (cc65 toolkit): generated output and third-party copies

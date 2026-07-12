@@ -1,20 +1,29 @@
-# C debugging for the Commander X16 with VS64 (Oscar64, cc65 & llvm-mos)
+# C and assembly debugging for the Commander X16 with VS64
 
 Version Alpha 0.1: need more testing, but seems to work. 
 
 ******************************
---> This repo is about a feature for debugging Oscar64, cc65 or llvm-mos C code directly into VSCode step by step with F10, F11, Shift F11 and F5
+--> This repo is about a feature for debugging Commander X16 programs directly into VSCode step by step with F10, F11, Shift F11 and F5 — in C (Oscar64, cc65, llvm-mos) and in native assembly (ACME, ca65, KickAssembler)
 ******************************
 
-This repo is set up for C development targeting the **Commander X16**, using
-the **[Oscar64](https://github.com/drmortalwombat/oscar64)**,
-**[cc65](https://cc65.github.io/)** or
-**[llvm-mos](https://github.com/llvm-mos/llvm-mos-sdk)** C compiler, with the
+This repo is set up for **C and assembly development targeting the Commander
+X16**, with the
 **[VS64](https://marketplace.visualstudio.com/items?itemName=rosc.vs64) VSCode
-extension** for build/run/debug integration. The walkthrough below uses
-[examples/bounce.c](oscar64/examples/bounce.c) — a sprite bouncing around the screen
-with PSG and YM2151 sound — as the working example; both toolchains build the
-same source against the [x16clib](https://github.com/vinej/x16_clib) library.
+extension** for build/run/debug integration. Six toolchains are supported,
+one project folder each:
+
+* **C**: [Oscar64](https://github.com/drmortalwombat/oscar64),
+  [cc65](https://cc65.github.io/) and
+  [llvm-mos](https://github.com/llvm-mos/llvm-mos-sdk), building against the
+  [x16clib](https://github.com/vinej/x16_clib) C library;
+* **assembly**: [ACME](https://sourceforge.net/projects/acme-crossass/),
+  ca65 and [KickAssembler](http://theweb.dk/KickAssembler/), building against
+  the [x16lib](https://github.com/vinej/x16_library) assembly library.
+
+The walkthrough below uses the bounce demo — a sprite bouncing around the
+screen with PSG and YM2151 sound — as the working example: `bounce.c` for
+the C toolchains, `bounce.asm` for the assembly ones (all six builds run the
+same demo).
 
 Nothing has to be installed system-wide except the VS64 extension itself —
 but the third-party pieces (compilers, emulators, support library, docs) are
@@ -31,11 +40,16 @@ cannot share a window):
 | Path | What it is |
 |---|---|
 | `oscar64/` | **The Oscar64 project** — open this folder in VSCode. Contains `project-config.json`, `.vscode/` (VS64 settings, tasks, launch configs), `examples/` (`hello.c`, `numbers.c`, `bounce.c`), `src_oscar64/x16/` (x16clib, Oscar64 port — header-driven: each header ends in `#pragma compile(...)`, so including it pulls the implementation in), `build/` (output: `bounce.prg` + Oscar64 listing/debug files) and `build_oscar64.ps1` (stand-alone CLI build/run/test script, no VSCode needed) |
-| `cc65/` | **The cc65 project** — same idea for cc65; the one toolchain whose debugger shows **local variables**; see [Debugging with the cc65 toolchain](#debugging-with-the-cc65-toolchain) |
-| `llvm/` | **The llvm-mos project** — same idea for llvm-mos; see [Debugging with the llvm-mos toolchain](#debugging-with-the-llvm-mos-toolchain) |
+| `cc65/` | **The cc65 project** (C) — same idea for cc65; the one toolchain whose debugger shows **local variables**; see [Debugging with the cc65 toolchain](#debugging-with-the-cc65-toolchain) |
+| `llvm/` | **The llvm-mos project** (C) — same idea for llvm-mos; see [Debugging with the llvm-mos toolchain](#debugging-with-the-llvm-mos-toolchain) |
+| `acme/` | **The ACME project** (assembly) — x16lib's reference dialect; see [Debugging assembly programs](#debugging-assembly-programs-acme-ca65-kickassembler) |
+| `ca65/` | **The ca65 project** (native assembly, not C) — same idea, ca65 dialect of x16lib |
+| `kickass/` | **The KickAssembler project** (assembly) — same idea, KickAss dialect of x16lib; needs Java |
 | `oscar64-sdk/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
-| `cc65-sdk/` | cc65 toolchain, repo-local copy (V2.19, `bin/cc65.exe`, `bin/ca65.exe`, `bin/ld65.exe`) |
+| `cc65-sdk/` | cc65 toolchain, repo-local copy (V2.19) — used by both the `cc65/` and `ca65/` projects |
 | `llvm-mos/` | llvm-mos SDK, repo-local full copy (`bin/mos-clang.exe`, `mos-platform/cx16/`, …) |
+| `acme-sdk/` | ACME cross-assembler, repo-local copy (`acme.exe`, `ACME_Lib/`) |
+| `kickass-sdk/` | KickAssembler, repo-local copy (`KickAss.jar` — Java must be on the PATH) |
 | `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` — shared by both projects |
 | `box16/` | [Box16](https://github.com/indigodarkwolf/box16) (nr48.0), an alternative X16 emulator with a much richer built-in debugger |
 | `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode, for both toolchains. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
@@ -72,12 +86,16 @@ the build script all refer to them):
 | `cc65/include_ca65/` | *(only for the cc65 variant)* x16clib headers, cc65 port | Copy `include_ca65/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `cc65/dist_ca65/` | *(only for the cc65 variant)* `x16c.lib`, the prebuilt x16clib archive | Copy `dist_ca65/x16c.lib` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_ca65.ps1`) |
 | `cc65/src_ca65/` | *(optional, cc65 variant)* x16clib assembly sources — only needed for the [step-into-the-library recipe](#stepping-into-x16clib-under-cc65) | Copy `src_ca65/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
+| `acme-sdk/` | *(only for the ACME variant)* the ACME cross-assembler: `acme.exe` + `ACME_Lib\` | Copy the `acme/` folder from [vinej/x16_library](https://github.com/vinej/x16_library), or an [ACME release](https://sourceforge.net/projects/acme-crossass/) |
+| `kickass-sdk/` | *(only for the KickAssembler variant)* `KickAss.jar` (+ `KickAss.cfg`); **Java must be on the PATH** | Copy the `kickass/` folder from [vinej/x16_library](https://github.com/vinej/x16_library), or [KickAssembler](http://theweb.dk/KickAssembler/) |
+| `acme/src_acme/` | *(ACME variant)* x16lib, the X16 assembly support library — reference (ACME) dialect | Copy `src_acme/` from [vinej/x16_library](https://github.com/vinej/x16_library) |
+| `ca65/src_ca65/` | *(ca65 variant)* x16lib, ca65 dialect | Copy `src_ca65/` from [vinej/x16_library](https://github.com/vinej/x16_library) — **note: this is x16_library's `src_ca65`, not x16_clib's** |
+| `kickass/src_kick/` | *(KickAssembler variant)* x16lib, KickAss dialect | Copy `src_kick/` from [vinej/x16_library](https://github.com/vinej/x16_library) |
 | `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
-The remaining ignored paths need nothing from you: `oscar64/build/`,
-`oscar64/build_oscar64/`, `cc65/build/` and `llvm/build/` are recreated by
-the first build,
+The remaining ignored paths need nothing from you: every project's `build/`
+folder (and `oscar64/build_oscar64/`) is recreated by the first build,
 and each project's `.vscode/c_cpp_properties.json` is regenerated by VS64
 (the hand-authored `settings.json`, `tasks.json` and `launch.json` *are*
 tracked, so the tasks and launch configurations work out of the box).
@@ -94,8 +112,20 @@ The only per-machine edit is the `vs64.*` absolute paths in each project's
 they cannot be made portable — replace `c:\quartus\projects\x16_CDebugger`
 with your clone location.
 
-**Oscar64** — open `<clone>\oscar64` (File → Open Folder…) and check
-[oscar64/.vscode/settings.json](oscar64/.vscode/settings.json):
+Each project's `.vscode\settings.json` names its toolchain with one
+setting (each opened in its own window, File → Open Folder…):
+
+| Open as workspace root | Toolchain setting to check | Points at |
+|---|---|---|
+| `<clone>\oscar64` | `vs64.oscar64InstallDir` | `<clone>\oscar64-sdk` |
+| `<clone>\cc65` | `vs64.cc65InstallDir` | `<clone>\cc65-sdk` |
+| `<clone>\llvm` | `vs64.llvmInstallDir` | `<clone>\llvm-mos` |
+| `<clone>\acme` | `vs64.acmeInstallDir` | `<clone>\acme-sdk` |
+| `<clone>\ca65` | `vs64.cc65InstallDir` | `<clone>\cc65-sdk` |
+| `<clone>\kickass` | `vs64.kickInstallDir` | `<clone>\kickass-sdk` |
+
+All six also share the same two emulator settings. For example,
+[oscar64/.vscode/settings.json](oscar64/.vscode/settings.json) reads:
 
 ```jsonc
 "vs64.oscar64InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\oscar64-sdk",
@@ -103,28 +133,11 @@ with your clone location.
 "vs64.x16Args":           "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
 ```
 
-**cc65** — open `<clone>\cc65` (a separate window) and check
-[cc65/.vscode/settings.json](cc65/.vscode/settings.json):
-
-```jsonc
-"vs64.cc65InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\cc65-sdk",
-"vs64.x16Executable":  "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
-"vs64.x16Args":        "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
-```
-
-**llvm-mos** — open `<clone>\llvm` (a separate window) and check
-[llvm/.vscode/settings.json](llvm/.vscode/settings.json):
-
-```jsonc
-"vs64.llvmInstallDir": "c:\\quartus\\projects\\x16_CDebugger\\llvm-mos",
-"vs64.x16Executable":  "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
-"vs64.x16Args":        "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2"
-```
-
 ### 4. First debug (same in both projects)
 
-1. Open `examples\bounce.c` in the project window and set a breakpoint on a
-   C line (e.g. the first statement of `main()`).
+1. Open the example in the project window — `examples\bounce.c` in the C
+   projects, `examples\bounce.asm` in the assembly ones — and set a
+   breakpoint on a line (e.g. the first statement of `main`).
 2. Press **F5**. The first launch configuration is
    **`Attach to Box16 (binary monitor)`**, which does everything: builds the
    PRG, kills any stale emulator, starts the Box16 fork with the binary
@@ -584,6 +597,61 @@ debugging with breakpoints, stepping and watches on globals.
   addresses (VSCode-side symbols are unaffected). The tasks therefore pass
   no `-sym`.
 
+## Debugging assembly programs (ACME, ca65, KickAssembler)
+
+The same F5 flow debugs **native assembly** programs written against
+[x16lib](https://github.com/vinej/x16_library) (the assembly sibling of
+x16clib: ACME is its reference dialect, and its `src_ca65\` / `src_kick\`
+ports are mechanically translated from it). Three projects: `acme\`,
+`ca65\`, `kickass\` — each opened as its own workspace root, each with the
+same one-F5 attach flow, and each verified to build a **byte-identical**
+`bounce.prg` from its dialect of the same demo.
+
+Assembly is where this debugger shines brightest: one instruction is one
+source line, so the per-instruction stepping matches the source exactly —
+no `__asm{}` opacity (Oscar64), no locals gap (llvm), nothing hidden.
+All three also produce a VICE label file that the Box16 task loads with
+`-sym`, so Box16's own ImGui debugger shows your symbol names too.
+
+Per-toolkit wiring notes:
+
+* **ACME** ([acme/project-config.json](acme/project-config.json)) — VS64's
+  native `acme` toolkit: it assembles with `-r build\bounce.report` and
+  parses that report for the line↔address mapping. `"machine": "65c02"`
+  becomes `--cpu 65c02` (for ACME the machine attribute selects the CPU;
+  `cx16` is not an ACME CPU name). `--vicelabels build/bounce.lbl` in
+  `assemblerFlags` writes the Box16 symbol file.
+* **ca65** ([ca65/project-config.json](ca65/project-config.json)) — uses
+  the `cc65` toolkit with a pure-assembly source. `"machine": "none"`
+  suppresses `-t` entirely (x16lib's ca65 dialect wants no target's
+  PETSCII re-mapping); `--cpu 65C02` comes via `assemblerFlags`, and the
+  link uses x16lib's plain-PRG memory layout via
+  `"linkerFlags": ["-C", "bounce.cfg", …]` ([ca65/bounce.cfg](ca65/bounce.cfg),
+  same layout as x16_library's `test_ca65\runner.cfg`). VS64's hardcoded
+  trailing `c64.lib` is harmless here — a self-contained assembly program
+  has no unresolved imports, so no library member is ever pulled in.
+  Debug info is ld65's `--dbgfile` output, assembled with `-g`.
+* **KickAssembler** ([kickass/project-config.json](kickass/project-config.json)) —
+  VS64's native `kick` toolkit runs `java -jar KickAss.jar` (Java required
+  on the PATH) with `-debugdump`, whose `.dbg` output VS64 parses.
+  `-vicesymbols -symbolfiledir build` in `assemblerFlags` writes
+  `build\bounce.vs` for Box16. Note: VS64 supports **one** assembly source
+  file per KickAss project (additional `sources` entries are ignored) —
+  x16lib's `#import` structure fits that model naturally.
+
+The `examples\bounce.asm` in `ca65\` and `kickass\` are translated from
+the ACME original with x16_library's `tools\acme2ca65.py` /
+`acme2kick.py`. The kick translation works as-is; the ca65 one needs the
+same two hand-fixes the library's own test runner uses: drop the
+`!cpu 65c02` line (the `--cpu` flag covers it) and replace `* = $0801` +
+`basic_stub` with the `LOADADDR`/`CODE` segment prologue (see the top of
+[ca65/examples/bounce.asm](ca65/examples/bounce.asm)).
+
+**64tass is the one x16_library dialect not covered**: VS64 has no 64tass
+toolkit, so there is no VSCode-side build or debug-info support. (64tass
+programs can still be debugged symbolically inside Box16 itself via its
+`--vice-labels` output and `-sym`.)
+
 ## Verified
 
 * `oscar64 -tm=x16` compile of `examples/bounce.c`: OK (exit 0, 2455 bytes
@@ -612,3 +680,11 @@ debugging with breakpoints, stepping and watches on globals.
   `pos`, `frac`, `vel`, `limit`, …); `bounce.lbl` written for Box16 `-sym`.
 * Box16 fork with the cc65-built PRG: OK — loads it, runs, and prints
   `binary monitor: listening on 127.0.0.1:6502`.
+* Assembly toolchains, `bounce.asm` with VS64's exact flags: ACME
+  (`--msvc … -f cbm --cpu 65c02 -r bounce.report --vicelabels`) OK —
+  3266-byte PRG + report + labels; ca65 (`-g --cpu 65C02` →
+  `ld65 --dbgfile -C bounce.cfg -Ln`) OK — PRG + `.dbg` + labels;
+  KickAssembler (`-debugdump -vicesymbols`, Java 1.8) OK — PRG + `.dbg` +
+  `.vs`. All three PRGs are **byte-identical** (MD5
+  `7F2F685178FD49D8C4F226BF2D09D3FD`), and the Box16 fork loads the PRG
+  and opens the binary monitor.

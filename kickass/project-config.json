@@ -1,0 +1,10 @@
+{
+    "name": "bounce",
+    "description": "x16lib bounce example, KickAssembler toolkit, assembly source-level debugging",
+    "toolkit": "kick",
+    "format": "prg",
+    "sources": [ "examples/bounce.asm" ],
+    "build": "debug",
+    "includes": [ "src_kick" ],
+    "assemblerFlags": [ "-vicesymbols" ]
+}

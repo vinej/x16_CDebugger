@@ -1,0 +1,11 @@
+{
+    "name": "bounce",
+    "description": "x16lib bounce example, ACME toolkit, assembly source-level debugging",
+    "toolkit": "acme",
+    "machine": "65c02",
+    "format": "prg",
+    "sources": [ "examples/bounce.asm" ],
+    "build": "debug",
+    "includes": [ "src_acme" ],
+    "assemblerFlags": [ "--vicelabels", "build/bounce.lbl" ]
+}
