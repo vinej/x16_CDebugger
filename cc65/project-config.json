@@ -1,0 +1,12 @@
+{
+    "name": "bounce",
+    "description": "x16clib bounce example, cc65 toolkit, C source-level debugging",
+    "toolkit": "cc65",
+    "machine": "cx16",
+    "format": "prg",
+    "sources": [ "examples/bounce.c" ],
+    "build": "debug",
+    "includes": [ "include_ca65" ],
+    "linker": ".\\ld65-cx16.cmd",
+    "linkerFlags": [ "-Ln", "build/bounce.lbl" ]
+}

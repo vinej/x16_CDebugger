@@ -10,6 +10,17 @@
 /oscar64-sdk
 # llvm-mos SDK, repo-local full copy (bin, lib, mos-platform, ...)
 /llvm-mos
+# cc65 toolchain, repo-local copy (bin, include, lib, cfg, asminc, target)
+/cc65-sdk
+
+# ---------------------------------------------------------------------------
+# cc65/ subproject (cc65 toolkit): generated output and third-party copies
+# (from vinej/x16_clib) are untracked; the hand-authored project-config.json,
+# ld65-cx16.cmd, examples/ and .vscode configs ARE tracked.
+# ---------------------------------------------------------------------------
+/cc65/build/
+/cc65/include_ca65/
+/cc65/dist_ca65/
 
 # ---------------------------------------------------------------------------
 # oscar64/ subproject (Oscar64 toolkit): generated output and third-party
