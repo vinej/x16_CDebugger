@@ -314,19 +314,35 @@ been sitting there. Breakpoints in Oscar64's `crt.c` startup code (before
 `main`) work the same way.
 
 Verified so far by a protocol test harness
-(`box16-src\test\binmon_test.py`, 23 assertions — run it against a
-`-binarymonitor` instance) that speaks the exact byte sequences VS64 sends:
-breakpoint at `move_sprite` stops at the exact address, step into/over/out,
-resume-and-rehit, delete-and-run-free all pass, and the fork without the
-flag behaves identically to stock (no port opened).
+(`box16-src\test\binmon_test.py`, 36 assertions — run it against a
+`-binarymonitor` instance with the **ca65** build's `.prg`/`.lbl`; the
+acme `.lbl` uses a format the harness can't parse) that speaks the exact
+byte sequences VS64 sends: breakpoint stops at the exact address, step
+into/over/out, resume-and-rehit, delete-and-run-free, and the VS64 attach
+semantics (reset + re-arm) all pass, and the fork without the flag behaves
+identically to stock (no port opened).
 
-MVP limits of the fork's monitor: main-memory (64 KB CPU view) only — fine
-for Oscar64 programs, which live below `$9F00`; conditional breakpoints are
-accepted but fire unconditionally; only VS64's *attach* mode is supported
-(use the task to start the emulator). Oscar64's `.dbj` carries no
-local-variable info in this version, so inspect locals via globals/statics
-or the memory view. Box16's own ImGui debugger stays usable while attached —
-pausing there shows up in VSCode and vice versa.
+Limits of the fork's monitor as used by VS64: main-memory (64 KB CPU view)
+only — fine for these programs, which live below `$9F00`; VICE
+condition-string breakpoints (`CHECKPOINT_CONDITION_SET`) are accepted but
+ignored — moot for VS64, which disables conditional breakpoints in its own
+DAP capabilities; only VS64's *attach* mode is supported (use the task to
+start the emulator). Oscar64's `.dbj` carries no local-variable info in
+this version, so inspect locals via globals/statics or the memory view.
+Box16's own ImGui debugger stays usable while attached — pausing there
+shows up in VSCode and vice versa.
+
+Beyond what VS64 uses, the fork's `CHECKPOINT_SET` has two **optional,
+backward-compatible extensions** (added for the
+[X16_BasicDebugger](https://github.com/vinej/X16_BasicDebugger) /
+X16_Prog8Debugger custom debug adapters; wire format documented in that
+repo's `docs\binmon-bank-extension.md`): a trailing machine-bank
+qualifier, so exec checkpoints in banked ROM/RAM (`$A000-$FFFF`) fire only
+in the right bank, and a binary *word-in-ranges* condition evaluated
+inside the CPU loop, which lets hook-style breakpoints (e.g. the BASIC
+interpreter's statement loop) filter at full emulation speed instead of
+per-hit client round-trips. Standard 9-byte VS64 requests take the
+unchanged code path — verified by the 36-assertion regression above.
 
 ### The stock emulators (assembly-level only)
 
@@ -698,10 +714,12 @@ debugger effort — see the X16_Prog8Debugger project charter.
 * `x16emu -prg build\bounce.prg -run`: OK — demo loads, runs, exits on key.
 * `Box16 -ignore_ini -rom emulator\rom.bin -prg build\bounce.prg -run -sym
   build\bounce.lbl`: OK — demo runs with symbols loaded.
-* Box16 fork binary monitor: all 23 protocol-harness assertions pass
-  (transport, memory/registers, exec breakpoint at `move_sprite` stopping at
-  the exact address, step into/over/out, resume-and-rehit, delete); without
-  `-binarymonitor` the fork behaves like stock and opens no port.
+* Box16 fork binary monitor: all 36 protocol-harness assertions pass
+  (transport, memory/registers, exec breakpoints stopping at the exact
+  address, step into/over/out, resume-and-rehit, delete, VS64 attach
+  semantics); without `-binarymonitor` the fork behaves like stock and
+  opens no port. Re-verified after the fork gained the bank-qualifier and
+  word-in-ranges checkpoint extensions (standard requests unaffected).
 * Oscar64 `-O3` on `bounce.c`: compiler crash (documented above).
 * llvm-mos build of `llvm\examples\bounce.c` with VS64's exact debug flags
   (`-g -O0 -fstandalone-debug …`, link with `-mreserve-zp=16` +
