@@ -1,0 +1,15 @@
+{
+    "name": "bounce",
+    "description": "x16clib bounce example built with Oscar64 for the Commander X16",
+    "toolkit": "oscar64",
+    "machine": "x16",
+    "format": "prg",
+    "sources": [
+        "examples/bounce.c"
+    ],
+    "build": "debug",
+    "definitions": [],
+    "includes": ["src_oscar64"],
+    "args": ["-tm=x16"],
+    "compilerFlags": ["-O1"]
+}
