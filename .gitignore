@@ -19,9 +19,18 @@
 /kickass-sdk
 # Prog8 compiler + 64tass, repo-local copy (prog8c.jar needs Java 11+)
 /prog8-sdk
+# dasm assembler, repo-local copy (dasm.exe)
+/dasm-sdk
 
 # prog8/ subproject: build output is untracked; tasks and example tracked
 /prog8/build/
+
+# dasm/ subproject: like the assembly projects below -- generated output
+# (build/, incl. the .sym/.lbl) and the src_dasm/ copy (from vinej/
+# x16_library's dasm dialect) are untracked; the hand-authored examples/,
+# build_dasm.ps1 and .vscode/tasks.json ARE tracked.
+/dasm/build/
+/dasm/src_dasm/
 
 # ---------------------------------------------------------------------------
 # Assembly subprojects (acme/, ca65/, kickass/), using x16lib from

@@ -46,12 +46,14 @@ cannot share a window):
 | `ca65/` | **The ca65 project** (native assembly, not C) — same idea, ca65 dialect of x16lib |
 | `kickass/` | **The KickAssembler project** (assembly) — same idea, KickAss dialect of x16lib; needs Java |
 | `prog8/` | **The Prog8 project** — build/run tasks + *symbolic* debugging in Box16 (no F5 source-level debugging: VS64 has no prog8/64tass toolkit); see [Prog8](#prog8-build--symbolic-debugging-only) |
+| `dasm/` | **The dasm project** (assembly) — **full F5 source-level debugging** even though VS64 has no dasm toolkit: the build synthesizes a cc65-format `.dbg` from dasm's listing, which VS64's `vice` debugger loads by extension. Builds x16_library's dasm dialect, byte-identical to the ACME/ca65/KickAssembler bounce; see [dasm](#dasm-full-f5-debugging-via-a-synthesized-dbg) |
 | `oscar64-sdk/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
 | `cc65-sdk/` | cc65 toolchain, repo-local copy (V2.19) — used by both the `cc65/` and `ca65/` projects |
 | `llvm-mos/` | llvm-mos SDK, repo-local full copy (`bin/mos-clang.exe`, `mos-platform/cx16/`, …) |
 | `acme-sdk/` | ACME cross-assembler, repo-local copy (`acme.exe`, `ACME_Lib/`) |
 | `kickass-sdk/` | KickAssembler, repo-local copy (`KickAss.jar` — Java must be on the PATH) |
 | `prog8-sdk/` | Prog8 compiler (`prog8c.jar`, v12.2.1 — needs **Java 11+**) plus `64tass.exe`, repo-local copy |
+| `dasm-sdk/` | [dasm](https://github.com/dasm-assembler/dasm) assembler, repo-local copy (`dasm.exe`, v2.20.17 release; the binary reports 2.20.16) |
 | `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` — shared by both projects |
 | `box16/` | [Box16](https://github.com/indigodarkwolf/box16) (nr48.0), an alternative X16 emulator with a much richer built-in debugger |
 | `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode, for both toolchains. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
@@ -94,6 +96,8 @@ the build script all refer to them):
 | `ca65/src_ca65/` | *(ca65 variant)* x16lib, ca65 dialect | Copy `src_ca65/` from [vinej/x16_library](https://github.com/vinej/x16_library) — **note: this is x16_library's `src_ca65`, not x16_clib's** |
 | `kickass/src_kick/` | *(KickAssembler variant)* x16lib, KickAss dialect | Copy `src_kick/` from [vinej/x16_library](https://github.com/vinej/x16_library) |
 | `prog8-sdk/` | *(only for the Prog8 variant)* `prog8c.jar` + `64tass.exe`; prog8c needs **Java 11+** installed | [prog8 releases](https://github.com/irmen/prog8/releases) (`prog8c-<version>-all.jar`, rename to `prog8c.jar`) + a [64tass](https://sourceforge.net/projects/tass64/) Windows build |
+| `dasm-sdk/` | *(only for the dasm variant)* `dasm.exe` (v2.20.17 release) | Windows build from [dasm releases](https://github.com/dasm-assembler/dasm/releases) (unzip so `dasm-sdk\dasm.exe` exists) |
+| `dasm/src_dasm/` | *(dasm variant)* x16lib, dasm dialect | Copy `src_dasm/` from [vinej/x16_library](https://github.com/vinej/x16_library) (generated there by `tools/acme2dasm.py`) |
 | `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
@@ -715,6 +719,60 @@ source map; the Box16 fork already provides the runtime control. The
 missing piece is a custom VSCode debug adapter, shared with the BASIC
 debugger effort — see the X16_Prog8Debugger project charter.
 
+## dasm (full F5 debugging via a synthesized `.dbg`)
+
+[dasm](https://github.com/dasm-assembler/dasm) is a venerable 6502-family
+cross-assembler and, like Prog8/64tass, is **not a VS64 toolkit**. Prog8
+therefore stops at symbolic Box16 debugging — but dasm does **not have to**.
+The `dasm/` project gets the **same one-F5 source-level debugging as the
+ACME/ca65/KickAssembler projects**, by a small trick:
+
+**VS64 chooses its debug-info parser purely from the file *extension*** —
+`.report`→ACME, `.dbg`→cc65, `.elf`→DWARF, `.dbj`→Oscar64 — independent of
+how the PRG was actually built, and its `vice` debug adapter is
+toolkit-agnostic (it only reads the debug file and drives the Box16 binary
+monitor). So the build synthesizes a **cc65-format `.dbg`** from dasm's own
+output, and VS64 debugs it like any cc65 program.
+
+Open `dasm\` as its own workspace root, set a breakpoint in
+`examples\bounce.asm`, press **F5** (`Attach to Box16 (binary monitor)`).
+That one step:
+
+* **`build project`** — runs [dasm/build_dasm.ps1](dasm/build_dasm.ps1):
+  `dasm-sdk\dasm.exe` assembles `examples\bounce.asm` straight to
+  `build\bounce.prg` (dasm has **no linker**; `-f1` writes the CBM `.prg`)
+  with a listing (`-l`) and symbol dump (`-s`). Then
+  [dasm/tools/dasm2dbg.py](dasm/tools/dasm2dbg.py) turns the listing into
+  `build\bounce.dbg` — cc65 `file`/`seg`/`span`/`line`/`sym` records giving
+  line↔address — and writes `build\bounce.lbl` (VICE labels) for Box16's
+  own `-sym`.
+* starts the Box16 fork with the binary monitor, attaches, restarts the
+  program, and stops at your breakpoint. **F10/F11/Shift+F11 stepping and
+  breakpoints work on the dasm source**; symbol watches use the `.dbg`
+  `sym` records. `project-config.json` sets `"toolkit": "cc65"` **only** so
+  VS64 loads `build\bounce.dbg` as cc65 debug info and locates
+  `build\bounce.prg` — cc65 itself is never run (`vs64.autoBuild` is off and
+  the build task is the dasm shell script), and the attach path only *reads*
+  the `.dbg`, so nothing overwrites it.
+
+The demo is a dasm port of the same bounce program: `dasm/src_dasm/` is
+[x16_library](https://github.com/vinej/x16_library)'s **dasm dialect** — a
+new first-class port sitting alongside the ACME/ca65/64tass/KickAssembler
+trees, generated by that repo's `tools/acme2dasm.py` and validated to
+assemble **byte-for-byte identically** to them (its 132-test on-target
+runner passes). So `dasm\build\bounce.prg` has the very same MD5
+(`7F2F685178FD49D8C4F226BF2D09D3FD`) as the ACME, ca65 and KickAssembler
+builds above — which is also why the synthesized `.dbg` is trustworthy: its
+addresses match the byte-identical ca65 build's own `ld65 --dbgfile` output.
+
+Why dasm needs the port rather than reusing an existing dialect: dasm has
+no cheap-local tier (it scopes `.name` locals with the `SUBROUTINE`
+directive), spells the 65C02 accumulator inc/dec `ina`/`dea`, has no
+linker, and rejects a local label as a macro argument — so the converter
+emits a `SUBROUTINE` before every label, promotes zone-locals to globals,
+and hand-maintains the macro layer, root include and the sin/atan tables
+(dasm has no assembler-time float math). See `src_dasm/README.md` upstream.
+
 ## Verified
 
 * `oscar64 -tm=x16` compile of `examples/bounce.c`: OK (exit 0, 2455 bytes
@@ -758,3 +816,18 @@ debugger effort — see the X16_Prog8Debugger project charter.
   `; source: examples\bounce.p8:NN` comments, 64tass listing + 
   `bounce.vice-mon-list` produced; Box16 fork loads the PRG with `-sym`
   and opens the binary monitor.
+* dasm 2.20.16 (v2.20.17 release) (`dasm examples\bounce.asm -I src_dasm -f1`): OK — 3266-byte
+  PRG **byte-identical** to the ACME/ca65/KickAssembler builds (MD5
+  `7F2F685178FD49D8C4F226BF2D09D3FD`), plus a 741-entry `bounce.lbl` (VICE
+  labels from dasm's symbol dump). Upstream, x16_library's new dasm dialect
+  builds `hello`/`numbers`/`runner` byte-identically too and its runner
+  passes all 132 on-target tests (2 skipped headless) — the whole 38-module
+  library validated.
+* dasm `.dbg` synthesis (`tools/dasm2dbg.py`): OK — generates 1100 `line`/
+  `span` records + 741 `sym` records across 13 source files; every `file`
+  path resolves, and addresses cross-check against the byte-identical ca65
+  build's `ld65 --dbgfile` output (e.g. `main` → `$080D`, `bounce.asm:90`
+  `jsr screen_cls` → `$080D` in both). VS64 selects the cc65 `.dbg` parser
+  by extension and its `vice` attach only *reads* the file (no rebuild).
+  Confirmed live in VSCode: F5 stops at breakpoints in the dasm source and
+  F10/F11/Shift+F11 step it — the same one-F5 flow as ACME/ca65/KickAssembler.

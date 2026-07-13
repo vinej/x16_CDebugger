@@ -1,0 +1,93 @@
+{
+    // dasm is not a VS64 toolkit, but F5 source-level debugging still works
+    // here: build_dasm.ps1 assembles with dasm AND writes build\bounce.dbg
+    // (a cc65-format debug file synthesized from dasm's listing). VS64 picks
+    // its debug-info parser by extension, so its existing "vice" debugger
+    // loads that .dbg and debugs the dasm source exactly like the ACME/ca65/
+    // KickAssembler projects -- same F10/F11/breakpoints, same Box16 fork.
+    //
+    // src_dasm\ is x16_library's dasm dialect, copied in (gitignored); every
+    // build is byte-identical to the ACME/ca65/kickass builds.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // Assemble examples\bounce.asm -> build\bounce.prg, and write
+            // build\bounce.dbg (VS64 debug info) + build\bounce.lbl (VICE
+            // labels for Box16's own -sym). dasm.exe lives in ..\dasm-sdk.
+            "label": "build project",
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "command": "powershell",
+            "args": [
+                "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}\\build_dasm.ps1",
+                "-Source", "examples\\bounce.asm"
+            ],
+            "problemMatcher": []
+        },
+        {
+            // Build, then run in the standard/official X16 emulator.
+            "label": "run in x16emu (standard)",
+            "type": "shell",
+            "command": "${workspaceFolder}\\..\\emulator\\x16emu.exe",
+            "args": [
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
+                "-prg", "${workspaceFolder}\\build\\bounce.prg",
+                "-run",
+                "-scale", "2"
+            ],
+            "dependsOn": "build project",
+            "problemMatcher": []
+        },
+        {
+            // Kill any leftover emulator so the debug flow always talks to
+            // a freshly started instance of the current build.
+            "label": "kill stale box16",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile", "-Command",
+                "Stop-Process -Name box16 -Force -ErrorAction SilentlyContinue; exit 0"
+            ],
+            "presentation": { "reveal": "silent" },
+            "problemMatcher": []
+        },
+        {
+            // The one-step debug entry point: F5 on "Attach to Box16
+            // (binary monitor)" runs this automatically (preLaunchTask).
+            // -sym loads the VICE label file for Box16's own ImGui debugger;
+            // VS64 separately loads build\bounce.dbg for VSCode debugging.
+            "label": "debug in Box16 (binary monitor)",
+            "type": "shell",
+            "command": "${workspaceFolder}\\..\\box16-src\\build\\vs2022\\out\\x64\\Release\\box16.exe",
+            "args": [
+                "-ignore_ini",
+                "-binarymonitor",
+                "-rom", "${workspaceFolder}\\..\\emulator\\rom.bin",
+                "-prg", "${workspaceFolder}\\build\\bounce.prg",
+                "-run",
+                "-sym", "${workspaceFolder}\\build\\bounce.lbl",
+                "-scale", "2"
+            ],
+            "dependsOn": ["build project", "kill stale box16"],
+            "dependsOrder": "sequence",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "box16-binary-monitor",
+                "pattern": {
+                    "regexp": "^__never_matches__$",
+                    "file": 1,
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "binary monitor: listening"
+                }
+            }
+        }
+    ]
+}

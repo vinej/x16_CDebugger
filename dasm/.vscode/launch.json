@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // FIRST so a plain F5 defaults to real source-level debugging.
+            // One-step assembly source-level debugging of the dasm build:
+            // F5 assembles with dasm (+ generates build\bounce.dbg), starts
+            // the Box16 fork with the binary monitor (via preLaunchTask),
+            // attaches, restarts the program, and stops at the first
+            // breakpoint. VS64 loads build\bounce.dbg (cc65-format debug
+            // info synthesized from dasm's listing) for line<->address.
+            "type": "vice",
+            "request": "attach",
+            "name": "Attach to Box16 (binary monitor)",
+            "program": "${workspaceFolder}\\build\\bounce.prg",
+            "hostname": "localhost",
+            "port": 6502,
+            "preLaunchTask": "debug in Box16 (binary monitor)"
+        },
+        {
+            // Plain run (no debugger) in the official x16emu.
+            "type": "x16",
+            "request": "launch",
+            "name": "Launch X16 emulator",
+            "preLaunchTask": "build project"
+        }
+    ]
+}
