@@ -1,0 +1,10 @@
+{
+    "name": "bounce",
+    "description": "x16lib bounce example, MADS (Mad Assembler) toolkit, assembly source-level debugging",
+    "toolkit": "cc65",
+    "machine": "none",
+    "format": "prg",
+    "sources": [ "examples/bounce.asm" ],
+    "build": "debug",
+    "includes": [ "src_mads" ]
+}

@@ -22,6 +22,9 @@
 # dasm assembler, repo-local copy (dasm.exe)
 /dasm-sdk
 
+# MADS (Mad Assembler), repo-local copy (mads.exe -- not redistributable)
+/mads-sdk
+
 # prog8/ subproject: build output is untracked; tasks and example tracked
 /prog8/build/
 
@@ -31,6 +34,13 @@
 # build_dasm.ps1 and .vscode/tasks.json ARE tracked.
 /dasm/build/
 /dasm/src_dasm/
+
+# mads/ subproject: same convention as dasm/ -- generated output (build/,
+# incl. the .lst/.lbl/.dbg) and the src_mads/ copy (from vinej/x16_library's
+# MADS dialect) are untracked; the hand-authored examples/, build_mads.ps1,
+# tools/mads2dbg.py and .vscode configs ARE tracked.
+/mads/build/
+/mads/src_mads/
 
 # ---------------------------------------------------------------------------
 # Assembly subprojects (acme/, ca65/, kickass/), using x16lib from

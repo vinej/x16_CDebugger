@@ -47,6 +47,7 @@ cannot share a window):
 | `kickass/` | **The KickAssembler project** (assembly) — same idea, KickAss dialect of x16lib; needs Java |
 | `prog8/` | **The Prog8 project** — build/run tasks + *symbolic* debugging in Box16 (no F5 source-level debugging: VS64 has no prog8/64tass toolkit); see [Prog8](#prog8-build--symbolic-debugging-only) |
 | `dasm/` | **The dasm project** (assembly) — **full F5 source-level debugging** even though VS64 has no dasm toolkit: the build synthesizes a cc65-format `.dbg` from dasm's listing, which VS64's `vice` debugger loads by extension. Builds x16_library's dasm dialect, byte-identical to the ACME/ca65/KickAssembler bounce; see [dasm](#dasm-full-f5-debugging-via-a-synthesized-dbg) |
+| `mads/` | **The MADS project** (assembly) — same trick as `dasm/`: **full F5 source-level debugging** with no VS64 MADS toolkit, via a cc65-format `.dbg` synthesized from MADS's listing + label dump. Builds x16_library's MADS dialect, byte-identical to the ACME/ca65/dasm bounce; see [MADS](#mads-full-f5-debugging-via-a-synthesized-dbg) |
 | `oscar64-sdk/` | Oscar64 compiler, repo-local copy (v1.32.272, `bin/oscar64.exe`) |
 | `cc65-sdk/` | cc65 toolchain, repo-local copy (V2.19) — used by both the `cc65/` and `ca65/` projects |
 | `llvm-mos/` | llvm-mos SDK, repo-local full copy (`bin/mos-clang.exe`, `mos-platform/cx16/`, …) |
@@ -54,6 +55,7 @@ cannot share a window):
 | `kickass-sdk/` | KickAssembler, repo-local copy (`KickAss.jar` — Java must be on the PATH) |
 | `prog8-sdk/` | Prog8 compiler (`prog8c.jar`, v12.2.1 — needs **Java 11+**) plus `64tass.exe`, repo-local copy |
 | `dasm-sdk/` | [dasm](https://github.com/dasm-assembler/dasm) assembler, repo-local copy (`dasm.exe`, v2.20.17 release; the binary reports 2.20.16) |
+| `mads-sdk/` | [MADS](https://github.com/tebe6502/Mad-Assembler) (Mad Assembler) assembler, repo-local copy (`mads.exe`, v2.1.7) — **not redistributable, gitignored** |
 | `emulator/` | Official X16 emulator (`x16emu.exe`) plus `rom.bin` — shared by both projects |
 | `box16/` | [Box16](https://github.com/indigodarkwolf/box16) (nr48.0), an alternative X16 emulator with a much richer built-in debugger |
 | `box16-src/` | Box16 fork (branch `binary-monitor`) adding a **VICE binary monitor server** — this is what enables C source-level debugging in VSCode, for both toolchains. Built exe: `build\vs2022\out\x64\Release\box16.exe` |
@@ -98,6 +100,8 @@ the build script all refer to them):
 | `prog8-sdk/` | *(only for the Prog8 variant)* `prog8c.jar` + `64tass.exe`; prog8c needs **Java 11+** installed | [prog8 releases](https://github.com/irmen/prog8/releases) (`prog8c-<version>-all.jar`, rename to `prog8c.jar`) + a [64tass](https://sourceforge.net/projects/tass64/) Windows build |
 | `dasm-sdk/` | *(only for the dasm variant)* `dasm.exe` (v2.20.17 release) | Windows build from [dasm releases](https://github.com/dasm-assembler/dasm/releases) (unzip so `dasm-sdk\dasm.exe` exists) |
 | `dasm/src_dasm/` | *(dasm variant)* x16lib, dasm dialect | Copy `src_dasm/` from [vinej/x16_library](https://github.com/vinej/x16_library) (generated there by `tools/acme2dasm.py`) |
+| `mads-sdk/` | *(only for the MADS variant)* `mads.exe` (v2.1.7) | `bin/windows_x86_64/mads.exe` from [tebe6502/Mad-Assembler](https://github.com/tebe6502/Mad-Assembler) (unzip so `mads-sdk\mads.exe` exists) |
+| `mads/src_mads/` | *(MADS variant)* x16lib, MADS dialect | Copy `src_mads/` from [vinej/x16_library](https://github.com/vinej/x16_library) (generated there by `tools/acme2mads.py`) |
 | `llvm/include_llvm/` | *(only for the llvm variant)* x16clib headers, llvm-mos port | Copy `include_llvm/` from [vinej/x16_clib](https://github.com/vinej/x16_clib) |
 | `llvm/dist_llvm/` | *(only for the llvm variant)* `libx16c.a`, the prebuilt x16clib archive | Copy `dist_llvm/libx16c.a` from [vinej/x16_clib](https://github.com/vinej/x16_clib) (or rebuild it with that repo's `build_llvm.ps1`) |
 
@@ -773,6 +777,60 @@ emits a `SUBROUTINE` before every label, promotes zone-locals to globals,
 and hand-maintains the macro layer, root include and the sin/atan tables
 (dasm has no assembler-time float math). See `src_dasm/README.md` upstream.
 
+## MADS (full F5 debugging via a synthesized `.dbg`)
+
+[MADS](https://github.com/tebe6502/Mad-Assembler) (Mad Assembler) is a
+6502-family cross-assembler and, exactly like dasm, is **not a VS64
+toolkit**. It gets the **same one-F5 source-level debugging** by the same
+trick: **VS64 chooses its debug-info parser purely from the file
+*extension*** (`.dbg`→cc65), so the build synthesizes a **cc65-format
+`.dbg`** from MADS's own output and VS64 debugs it like any cc65 program.
+
+Open `mads\` as its own workspace root, set a breakpoint in
+`examples\bounce.asm`, press **F5** (`Attach to Box16 (binary monitor)`).
+That one step:
+
+* **`build project`** — runs [mads/build_mads.ps1](mads/build_mads.ps1):
+  `mads-sdk\mads.exe` assembles `examples\bounce.asm` (`-c` case-sensitive,
+  `-i:src_mads` for the library) to a listing (`-l`) and label dump (`-t`).
+  MADS has **no linker** and writes a **flat image** (x16lib's `x16.asm`
+  sets `opt h-`), so the script **prepends the two-byte `$0801` load
+  address** to make `build\bounce.prg`. Then
+  [mads/tools/mads2dbg.py](mads/tools/mads2dbg.py) turns the listing +
+  labels into `build\bounce.dbg` — cc65 `file`/`seg`/`span`/`line`/`sym`
+  records giving line↔address — and rewrites `build\bounce.lbl` into VICE
+  labels for Box16's own `-sym`.
+* starts the Box16 fork with the binary monitor, attaches, restarts the
+  program, and stops at your breakpoint. **F10/F11/Shift+F11 stepping and
+  breakpoints work on the MADS source**; symbol watches use the `.dbg`
+  `sym` records. As with dasm, `project-config.json` sets `"toolkit":
+  "cc65"` **only** so VS64 loads the `.dbg` and locates the `.prg` — cc65
+  itself is never run (`vs64.autoBuild` is off; the build task is the MADS
+  shell script), and the attach path only *reads* the `.dbg`.
+
+The demo is a MADS port of the same bounce program: `mads/src_mads/` is
+[x16_library](https://github.com/vinej/x16_library)'s **MADS dialect** (tag
+`v0.2.0`) — a first-class port alongside the ACME/ca65/64tass/KickAssembler/
+dasm trees, generated by that repo's `tools/acme2mads.py` and validated to
+assemble **byte-for-byte identically** to them (its 132-test on-target
+runner passes). So `mads\build\bounce.prg` has the very same MD5
+(`7F2F685178FD49D8C4F226BF2D09D3FD`) as the ACME, ca65, KickAssembler and
+dasm builds — which is why the synthesized `.dbg` is trustworthy: its
+addresses match the byte-identical ca65 build's own `ld65 --dbgfile` output.
+
+MADS's listing needs a slightly different parser from dasm's:
+[mads2dbg.py](mads/tools/mads2dbg.py) tracks the file per `Source:`/`Macro:`
+marker (MADS lists by unique basename), reads the space-separated byte
+column up to the tab before the source (so a mnemonic like `bcc`/`dec` is
+never mistaken for a byte), and recovers the true size of a long data row
+(MADS truncates the byte dump to 6 bytes and marks it `+`) from the next
+row's address. Why MADS needs the port rather than reusing an existing
+dialect: `?`-locals resolve to the nearest definition (they break forward
+branches, so `@cheap` labels become `<owner>__name` globals), macro
+arguments split on whitespace (so they must be space-free), and `.byte
+"..."` applies Atari screen-code conversion (raw strings use `dta c'...'`).
+See `src_mads/README.md` upstream.
+
 ## Verified
 
 * `oscar64 -tm=x16` compile of `examples/bounce.c`: OK (exit 0, 2455 bytes
@@ -831,3 +889,18 @@ and hand-maintains the macro layer, root include and the sin/atan tables
   by extension and its `vice` attach only *reads* the file (no rebuild).
   Confirmed live in VSCode: F5 stops at breakpoints in the dasm source and
   F10/F11/Shift+F11 step it — the same one-F5 flow as ACME/ca65/KickAssembler.
+* MADS 2.1.7 (`mads examples\bounce.asm -c -i:src_mads -l -t`): OK — flat
+  image + prepended `$0801` yields a 3266-byte PRG **byte-identical** to the
+  ACME/ca65/KickAssembler/dasm builds (MD5
+  `7F2F685178FD49D8C4F226BF2D09D3FD`). The MADS bounce was converted from
+  the ACME reference with x16_library's `tools/acme2mads.py`; upstream the
+  MADS dialect builds `hello`/`numbers`/`runner` byte-identically and its
+  runner passes all 132 on-target tests.
+* MADS `.dbg` synthesis (`tools/mads2dbg.py`): OK — generates 1362 `line`/
+  `span` records + 797 `sym` records across 14 source files; every `file`
+  path resolves, and addresses cross-check against the byte-identical ca65
+  build (e.g. `main` → `$080D`, `bounce.asm:88` `jsr screen_cls` → `$080D`;
+  truncated `dta` rows get their true size from the next address). Box16
+  fork loads `build\bounce.prg` with `build\bounce.lbl` (`-sym`, 797 VICE
+  labels) and opens the binary monitor on port 6502 — the same one-F5
+  attach flow as the dasm project.

@@ -1,0 +1,23 @@
+{
+    // MADS is NOT a VS64 toolkit. This project uses `"toolkit": "cc65"` in
+    // project-config.json ONLY so VS64 loads the debug info as a cc65 .dbg
+    // (VS64 selects the debug-info parser purely by file extension) and
+    // computes build\bounce.prg / build\bounce.dbg as the program + debug
+    // paths. The actual assembly is done by build_mads.ps1 (mads.exe), and
+    // build_mads.ps1 writes the .dbg from MADS's listing. VS64 never builds
+    // here -- the attach flow only READS build\bounce.dbg.
+    //
+    // cc65InstallDir just satisfies VS64's toolkit check; cc65 is not run.
+    // (It points at the same repo-local cc65-sdk the ca65 project uses;
+    // if you don't have it, debugging still works -- only a warning shows.)
+    "vs64.cc65InstallDir": "c:\\quartus\\projects\\x16_CDebugger\\cc65-sdk",
+
+    // The Commander X16 emulator, shared with the other toolchain projects.
+    "vs64.x16Executable": "c:\\quartus\\projects\\x16_CDebugger\\emulator\\x16emu.exe",
+    "vs64.x16Args": "-rom c:\\quartus\\projects\\x16_CDebugger\\emulator\\rom.bin -scale 2",
+
+    // MUST stay false: on-save autoBuild would invoke VS64's cc65 build on
+    // MADS-syntax source (which cc65 cannot assemble). Building is the
+    // "build project" shell task (mads) only.
+    "vs64.autoBuild": false
+}
